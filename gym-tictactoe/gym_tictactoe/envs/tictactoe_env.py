@@ -3,9 +3,17 @@ import numpy as np
 from gymnasium import Env
 from gymnasium.spaces import Box, Discrete
 
+def findSubArray(array, k):
+    for i in range(len(array) - k + 1):
+        s = sum(array[i:i+k])
+        if abs(s) == k:
+            return s / k
+    return 0
+
 class TicTacToeEnv(Env):
-    def __init__(self, size= 3):
+    def __init__(self, size= 3, k= 3):
         self.size = size
+        self.k = k
         self.observation_space = Box(low= -1, high= 1, shape= (self.size, self.size), dtype= np.int64)
         self.action_space = Discrete(self.size ** 2)
         self.reward_range = (-1, 1)
@@ -40,41 +48,57 @@ class TicTacToeEnv(Env):
             return True
         return False
     
-    def _row_winner(self, obs):
-        for row in obs:
-            row_sum = sum(row)
-            if abs(row_sum) == self.size:
-                return row_sum / self.size
-        return 0
+    def _row_winner(self, obs, last_action):
+        (x, _) = self._action_to_index_map[last_action]
+
+
+
+        temp_arr = obs[x]
+
+        return findSubArray(temp_arr, self.k)
     
-    def _col_winner(self, obs):
-        return self._row_winner(obs.T)
+    def _col_winner(self, obs, last_action):
+        (_, y) = self._action_to_index_map[last_action]
+
+        temp_arr = obs.T[y]
+
+        return findSubArray(temp_arr, self.k)
     
-    def _main_diag_winner(self, obs):
-        main_diag_sum = np.trace(obs)
-        if abs(main_diag_sum) == self.size:
-            return main_diag_sum / self.size
-        return 0
+    def _main_diag_winner(self, obs, last_action):
+        (x, y) = self._action_to_index_map[last_action]
+
+        temp_arr = obs.diagonal(y - x)
+
+        return findSubArray(temp_arr, self.k)
     
-    def _reverse_main_diag_winner(self, obs):
-        return self._main_diag_winner(obs[::-1])
+    def _reverse_main_diag_winner(self, obs, last_action):
+        (x, y) = self._action_to_index_map[last_action]
+
+        temp_arr = obs[::-1].diagonal(y - (len(obs) - 1 - x))
+
+        return findSubArray(temp_arr, self.k)
     
-    def _is_game_over(self):
+    def _is_game_over(self, last_action):
         if len(self._history) == self.action_space.n:
             self._winner = 0
             return True
         
-        winner = self._row_winner(self._obs)
+        winner = self._row_winner(self._obs, last_action)
         if winner != 0:
             self._winner = winner
             return True
         
-        winner = self._main_diag_winner(self._obs)
+        winner = self._col_winner(self._obs, last_action)
         if winner != 0:
             self._winner = winner
             return True
         
-        winner = self._reverse_main_diag_winner(self._obs)
+        winner = self._main_diag_winner(self._obs, last_action)
+        if winner != 0:
+            self._winner = winner
+            return True
+        
+        winner = self._reverse_main_diag_winner(self._obs, last_action)
         if winner != 0:
             self._winner = winner
             return True
@@ -91,7 +115,7 @@ class TicTacToeEnv(Env):
         else:
             self._obs[self._action_to_index_map[action]] = self._player
             self._history.append(action)
-            self._terminal = self._is_game_over()
+            self._terminal = self._is_game_over(action)
             if not self._terminal:
 
                 self._player *= -1
@@ -130,4 +154,5 @@ class TicTacToeEnv(Env):
         #     render_game += row
         # print(render_game)       
         print(observation)
+        print(self._get_info())
     

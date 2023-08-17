@@ -1,7 +1,7 @@
 from tictactoe_env import TicTacToeEnv
 
 if __name__ == "__main__" :
-    env = TicTacToeEnv(size= 10)
+    env = TicTacToeEnv(size= 5)
     env.reset()
     terminal = False
     while not terminal:
